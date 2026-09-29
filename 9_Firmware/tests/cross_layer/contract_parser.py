@@ -114,7 +114,7 @@ def parse_python_opcodes(filepath: Path | None = None) -> dict[int, OpcodeEntry]
     """
     if filepath is None:
         filepath = GUI_DIR / "radar_protocol.py"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     # Extract MCU_ONLY_OPCODES set so we can exclude those values below.
     mcu_only: set[int] = set()
@@ -143,7 +143,7 @@ def parse_python_packet_constants(filepath: Path | None = None) -> dict[str, Pac
     """Extract HEADER_BYTE, FOOTER_BYTE, STATUS_HEADER_BYTE, packet sizes."""
     if filepath is None:
         filepath = GUI_DIR / "radar_protocol.py"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     def _find(pattern: str) -> int:
         m = re.search(pattern, text)
@@ -171,7 +171,7 @@ def parse_python_data_packet_fields(filepath: Path | None = None) -> list[DataPa
     """
     if filepath is None:
         filepath = GUI_DIR / "radar_protocol.py"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     # Find parse_data_packet method body
     match = re.search(
@@ -237,7 +237,7 @@ def parse_python_status_fields(filepath: Path | None = None) -> list[StatusWordF
     """
     if filepath is None:
         filepath = GUI_DIR / "radar_protocol.py"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     match = re.search(
         r'def parse_status_packet\(.*?\).*?(?=\n    @|\n    def |\nclass |\Z)',
@@ -307,7 +307,7 @@ def parse_verilog_opcodes(filepath: Path | None = None) -> dict[int, OpcodeEntry
     """
     if filepath is None:
         filepath = FPGA_DIR / "radar_system_top.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     # Find the command decode case block
     # Pattern: case statement with 8'hXX opcodes
@@ -391,7 +391,7 @@ def parse_verilog_reset_defaults(filepath: Path | None = None) -> dict[str, int]
     """
     if filepath is None:
         filepath = FPGA_DIR / "radar_system_top.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     defaults: dict[str, int] = {}
 
@@ -428,7 +428,7 @@ def parse_verilog_register_widths(filepath: Path | None = None) -> dict[str, int
     """
     if filepath is None:
         filepath = FPGA_DIR / "radar_system_top.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     widths: dict[str, int] = {}
 
@@ -450,7 +450,7 @@ def parse_verilog_packet_constants(
     """Extract HEADER, FOOTER, STATUS_HEADER, packet size localparams."""
     if filepath is None:
         filepath = FPGA_DIR / "usb_data_interface_ft2232h.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     def _find(pattern: str) -> int:
         m = re.search(pattern, text)
@@ -546,7 +546,7 @@ def parse_verilog_status_word_concats(
     """
     if filepath is None:
         filepath = FPGA_DIR / "usb_data_interface_ft2232h.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     results: dict[int, str] = {}
 
@@ -574,7 +574,7 @@ def get_usb_interface_port_widths(filepath: Path | None = None) -> dict[str, int
     """
     if filepath is None:
         filepath = FPGA_DIR / "usb_data_interface_ft2232h.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     widths: dict[str, int] = {}
 
@@ -599,7 +599,7 @@ def parse_verilog_data_mux(
     """
     if filepath is None:
         filepath = FPGA_DIR / "usb_data_interface_ft2232h.v"
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     # Find the data mux case block
     match = re.search(
@@ -749,7 +749,7 @@ def parse_stm32_start_flag(
     if not filepath.exists():
         return []
 
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
 
     # Look for the start flag array, e.g. {23, 46, 158, 237}
     match = re.search(r'start_flag.*?=\s*\{([^}]+)\}', text, re.DOTALL)
@@ -774,7 +774,7 @@ def parse_xdc_gpio_pins(filepath: Path | None = None) -> list[GpioPin]:
     if not filepath.exists():
         return []
 
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
     pins: list[GpioPin] = []
 
     # Match: set_property PACKAGE_PIN XX [get_ports {signal_name}]
@@ -808,7 +808,7 @@ def parse_stm32_gpio_init(filepath: Path | None = None) -> list[GpioPin]:
     if not filepath.exists():
         return []
 
-    text = filepath.read_text()
+    text = filepath.read_text(encoding="utf-8")
     pins: list[GpioPin] = []
 
     # Look for GPIO_InitStruct.Pin and GPIO_InitStruct.Mode patterns

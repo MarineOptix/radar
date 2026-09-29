@@ -29,6 +29,7 @@ from __future__ import annotations
 import ast
 import os
 import re
+import shutil
 import struct
 import subprocess
 import tempfile
@@ -57,13 +58,11 @@ IVERILOG = os.environ.get("IVERILOG", "iverilog")
 VVP = os.environ.get("VVP", "vvp")
 CXX = os.environ.get("CXX", "c++")
 
-# Check tool availability for conditional skipping
-_has_iverilog = Path(IVERILOG).exists() if "/" in IVERILOG else bool(
-    subprocess.run(["which", IVERILOG], capture_output=True).returncode == 0
-)
-_has_cxx = subprocess.run(
-    [CXX, "--version"], capture_output=True
-).returncode == 0
+# Check tool availability for conditional skipping.  shutil.which() accepts
+# both bare names and full paths, and returns None instead of raising when
+# the tool is missing (subprocess.run raises FileNotFoundError).
+_has_iverilog = shutil.which(IVERILOG) is not None
+_has_cxx = shutil.which(CXX) is not None
 
 # In CI, missing tools must be a hard failure — never silently skip.
 _in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
@@ -519,7 +518,7 @@ class TestTier1AgcCrossLayerInvariant:
 
     def test_fpga_dig6_drives_agc_enable(self):
         """FPGA must drive gpio_dig6 from host_agc_enable, NOT tied low."""
-        rtl = (cp.FPGA_DIR / "radar_system_top.v").read_text()
+        rtl = (cp.FPGA_DIR / "radar_system_top.v").read_text(encoding="utf-8")
         # Must find: assign gpio_dig6 = host_agc_enable;
         assert re.search(
             r'assign\s+gpio_dig6\s*=\s*host_agc_enable\s*;', rtl
@@ -542,7 +541,7 @@ class TestTier1AgcCrossLayerInvariant:
 
     def test_mcu_agc_constructor_default_off(self):
         """MCU ADAR1000_AGC constructor must default enabled=false."""
-        agc_cpp = (cp.MCU_LIB_DIR / "ADAR1000_AGC.cpp").read_text()
+        agc_cpp = (cp.MCU_LIB_DIR / "ADAR1000_AGC.cpp").read_text(encoding="utf-8")
         # The constructor initializer list must have enabled(false)
         assert re.search(
             r'enabled\s*\(\s*false\s*\)', agc_cpp
@@ -553,7 +552,7 @@ class TestTier1AgcCrossLayerInvariant:
 
     def test_mcu_reads_dig6_before_agc_gate(self):
         """MCU main loop must read DIG_6 GPIO to sync outerAgc.enabled."""
-        main_cpp = (cp.MCU_CODE_DIR / "main.cpp").read_text()
+        main_cpp = (cp.MCU_CODE_DIR / "main.cpp").read_text(encoding="utf-8")
         # DIG_6 must be read via HAL_GPIO_ReadPin
         assert re.search(
             r'HAL_GPIO_ReadPin\s*\(\s*FPGA_DIG6', main_cpp,
@@ -576,12 +575,12 @@ class TestTier1AgcCrossLayerInvariant:
         assert v_defaults.get("host_agc_enable") == 0
 
         # MCU
-        agc_cpp = (cp.MCU_LIB_DIR / "ADAR1000_AGC.cpp").read_text()
+        agc_cpp = (cp.MCU_LIB_DIR / "ADAR1000_AGC.cpp").read_text(encoding="utf-8")
         assert re.search(r'enabled\s*\(\s*false\s*\)', agc_cpp)
 
         # GUI: status word 4 bit[11] is host_agc_enable, which resets to 0.
         # Verify the GUI parses bit[11] of status word 4 as the AGC flag.
-        gui_py = (cp.GUI_DIR / "radar_protocol.py").read_text()
+        gui_py = (cp.GUI_DIR / "radar_protocol.py").read_text(encoding="utf-8")
         assert re.search(
             r'words\[4\].*>>\s*11|status_words\[4\].*>>\s*11',
             gui_py,
@@ -592,7 +591,7 @@ class TestTier1AgcCrossLayerInvariant:
         Status word 4 bit[11] and DIG_6 must both derive from host_agc_enable.
         This guarantees the GUI status display can never lie about MCU AGC state.
         """
-        rtl = (cp.FPGA_DIR / "radar_system_top.v").read_text()
+        rtl = (cp.FPGA_DIR / "radar_system_top.v").read_text(encoding="utf-8")
 
         # DIG_6 driven by host_agc_enable
         assert re.search(
@@ -602,8 +601,8 @@ class TestTier1AgcCrossLayerInvariant:
         # Status word 4 must contain host_agc_enable (may be named
         # status_agc_enable at the USB interface port boundary).
         # Also verify the top-level wiring connects them.
-        usb_ft2232h = (cp.FPGA_DIR / "usb_data_interface_ft2232h.v").read_text()
-        usb_ft601 = (cp.FPGA_DIR / "usb_data_interface.v").read_text()
+        usb_ft2232h = (cp.FPGA_DIR / "usb_data_interface_ft2232h.v").read_text(encoding="utf-8")
+        usb_ft601 = (cp.FPGA_DIR / "usb_data_interface.v").read_text(encoding="utf-8")
 
         # USB interfaces use the port name status_agc_enable
         found_in_ft2232h = "status_agc_enable" in usb_ft2232h
@@ -630,7 +629,7 @@ class TestTier1AgcCrossLayerInvariant:
         the latest GPIO sample would let a single-cycle glitch flip the AGC
         state for one frame — defeating the debounce claim in the PR body.
         """
-        main_cpp = (cp.MCU_CODE_DIR / "main.cpp").read_text()
+        main_cpp = (cp.MCU_CODE_DIR / "main.cpp").read_text(encoding="utf-8")
 
         # (1) Current-frame DIG_6 sample must be captured in a local variable
         # so it can be compared against the previous-frame value.
@@ -899,8 +898,8 @@ class TestTier1Adar1000ChannelRegisterRoundTrip:
 
     @classmethod
     def setup_class(cls):
-        cls.header_txt = (cp.MCU_LIB_DIR / "ADAR1000_Manager.h").read_text()
-        cls.manager_txt = (cp.MCU_LIB_DIR / "ADAR1000_Manager.cpp").read_text()
+        cls.header_txt = (cp.MCU_LIB_DIR / "ADAR1000_Manager.h").read_text(encoding="utf-8")
+        cls.manager_txt = (cp.MCU_LIB_DIR / "ADAR1000_Manager.cpp").read_text(encoding="utf-8")
         cls.reg_map = _parse_adar_register_map(cls.header_txt)
         cls.helper_sites = _extract_adar_helper_sites(
             cls.manager_txt, cls._SETTERS,
@@ -920,7 +919,7 @@ class TestTier1Adar1000ChannelRegisterRoundTrip:
                 if path in seen:
                     continue
                 seen.add(path)
-                scanned.append((path.name, path.read_text()))
+                scanned.append((path.name, path.read_text(encoding="utf-8")))
         cls.sources = scanned
         # Sanity: the two TUs known to call ADAR1000 setters at the time
         # of issue #90 must be in scope.  If a future refactor renames or
@@ -1265,7 +1264,7 @@ class TestTier2Adar1000VmTableGroundTruth:
             / "ADAR1000_Manager.cpp"
         )
         assert path.is_file(), f"Firmware source missing: {path}"
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
 
     def test_ground_truth_table_shape(self):
         """Sanity-check the imported reference (defends against import-path mishap)."""
@@ -1463,9 +1462,9 @@ class TestTier2VerilogCosim:
         # Parse output
         return {
             "stdout": result.stdout,
-            "cmd_results": (workdir / "cmd_results.txt").read_text(),
-            "data_packet": (workdir / "data_packet.txt").read_text(),
-            "status_packet": (workdir / "status_packet.txt").read_text(),
+            "cmd_results": (workdir / "cmd_results.txt").read_text(encoding="utf-8"),
+            "data_packet": (workdir / "data_packet.txt").read_text(encoding="utf-8"),
+            "status_packet": (workdir / "status_packet.txt").read_text(encoding="utf-8"),
         }
 
     def test_all_tb_tests_pass(self, tb_results):
